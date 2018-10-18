@@ -1,5 +1,7 @@
 extends Node
 
+var Sproto = preload("res://sproto.gd")
+
 # class member variables go here, for example:
 # var a = 2
 # var b = "textvar"
@@ -69,13 +71,13 @@ func test2(buf):
 
 
 func _on_Button_pressed():
-	var buf = Buffer.new()
-	buf.init([0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x00])
+	#var buf = Buffer.new()
+	#buf.init([0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x00])
 	#var buf1 = Buffer.new()
 	#buf1.pointer(buf)
-	test2(buf)
-	print(buf.buffer)
-	print(buf.index)
+	#test2(buf)
+	#print(buf.buffer)
+	#print(buf.index)
 
 	
 	#buf1.move(1)
@@ -83,10 +85,17 @@ func _on_Button_pressed():
 	#print(buf.buffer)
 	#print(buf.index)
 	
-	var bytes = buf.slice(0,13)
-	var bytesArr = PoolByteArray(bytes)
-	var ss = bytesArr.get_string_from_utf8()
-	print(ss)
-	print(buf.get_string_from_utf8(0, 5))
+	#var bytes = buf.slice(0,13)
+	#var bytesArr = PoolByteArray(bytes)
+	#var ss = bytesArr.get_string_from_utf8()
+	#print(ss)
+	#print(buf.get_string_from_utf8(0, 5))
+	
+	for i in range(3,0,-1):
+		print(i)
+	
+	var sproto = Sproto.new()
+	
+	sproto.create_from_spb("res://protocol.spb")
 	
 	pass # replace with function body
