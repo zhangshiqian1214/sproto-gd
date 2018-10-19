@@ -112,7 +112,9 @@ func struct_field(buffer, sz):
 	sz -= header
 	stream.move(header)
 	for i in range(fn):
-		var value = toword(field.move(i * SIZEOF_FIELD))
+		var pTmp = Buffer.new()
+		pTmp.pointer(field, i * SIZEOF_FIELD)
+		var value = toword(pTmp)
 		if value != 0:
 			continue
 		if sz < SIZEOF_LENGTH:
@@ -134,9 +136,9 @@ func import_string(s, buffer):
 func calc_pow(base, n):
 	if n == 0:
 		return 1
-	var r = calc_pow(base * base, floor( n / 2))
-	if (n & 1) != 0 :
-		r *= base
+	var r = int(calc_pow(base * base, floor( n / 2)))
+	if (int(n) & 1) != 0 :
+		r *= int(base)
 	return r
 	
 func import_field(s, f, buffer):
@@ -544,7 +546,7 @@ func encode_integer_array(cb, args, buffer, size, noarray):
 					uint32_to_uint64(negative, pTmp)
 				intlen = SIZEOF_INT64
 			
-			v = args.value
+			var v = args.value
 			stream.set(0, v & 0xff)
 			stream.set(1, (v >> 8) & 0xff)
 			stream.set(2, (v >> 16) & 0xff)
@@ -586,7 +588,7 @@ func encode_array(cb, args, buffer, size):
 		while true:
 			args.value = 0
 			args.length = 4
-			sz = cb.call_func(args)
+			var sz = cb.call_func(args)
 			if sz < 0:
 				if sz == SPROTO_CB_NIL:
 					break
@@ -611,7 +613,7 @@ func encode_array(cb, args, buffer, size):
 			args.buffer = Buffer.new()
 			args.buffer.pointer(stream, SIZEOF_LENGTH)
 			args.length = size
-			sz = cb.call_func(args)
+			var sz = cb.call_func(args)
 			if sz < 0:
 				if sz == SPROTO_CB_NIL:
 					break
@@ -623,7 +625,7 @@ func encode_array(cb, args, buffer, size):
 			size -= sz
 			args.index += 1
 			
-	sz = stream.index - (data.index + SIZEOF_LENGTH)
+	var sz = stream.index - (data.index + SIZEOF_LENGTH)
 	return fill_size(data, sz)
 	
 	
@@ -772,7 +774,7 @@ func _encode(args):
 			args.length = arr.size()
 		args.buffer = Buffer.new()
 		args.buffer.init(arr)
-		return sz
+		return args.length
 	elif args.type == SPROTO_TSTRUCT:
 		var sub = {}
 		sub.st = args.subtype

@@ -90,12 +90,10 @@ func _on_Button_pressed():
 	#var ss = bytesArr.get_string_from_utf8()
 	#print(ss)
 	#print(buf.get_string_from_utf8(0, 5))
-	
-	for i in range(3,0,-1):
-		print(i)
-	
+
 	var sproto = Sproto.new()
-	
 	sproto.create_from_spb("res://protocol.spb")
+	
+	
 	
 	pass # replace with function body
