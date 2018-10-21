@@ -58,13 +58,26 @@ class Buffer:
 		return result
 	func get_string_from_utf8(idx, sz):
 		return PoolByteArray(slice(idx, sz)).get_string_from_utf8()
+	func splice(idx, sz):
+		if sz == 0:
+			return
+		var begin = idx + index
+		if begin > buffer.size():
+			return
+		if sz > buffer.size() - begin:
+			sz = buffer.size() - begin
+		for i in range(sz):
+			buffer.remove(index+idx)
+		return sz
 	
 func expand_buffer(buffer, osz, nsz):
 	while osz < nsz:
 		osz *= 2
 	if osz > ENCODE_MAXSIZE:
 		return null
-	buffer.init(Array().resize(osz))
+	var tmp = Array()
+	tmp.resize(osz)
+	buffer.init(tmp)
 	return buffer
 
 func expand64(v):
@@ -626,6 +639,8 @@ func encode_array(cb, args, buffer, size):
 			args.index += 1
 			
 	var sz = stream.index - (data.index + SIZEOF_LENGTH)
+	if sz == 0:
+		return 0
 	return fill_size(data, sz)
 	
 	
@@ -690,7 +705,7 @@ func sproto_encode(st, buffer, size, cb, ud):
 				else:
 					return -1
 			elif type == SPROTO_TSTRUCT || type == SPROTO_TSTRING:
-				sz = encode_object(cb, args, data, sz)
+				sz = encode_object(cb, args, data, size)
 		if sz < 0:
 			return -1
 		if sz > 0:
@@ -704,15 +719,15 @@ func sproto_encode(st, buffer, size, cb, ud):
 				tag = (tag - 1) * 2 + 1
 				if tag > 0xffff:
 					return -1
-				record.set(0, tag & 0xff)
-				record.set(1, (tag >> 8) & 0xff)
+				record.set(0, int(tag) & 0xff)
+				record.set(1, (int(tag) >> 8) & 0xff)
 				index += 1
 				record.move(SIZEOF_FIELD)
 			index += 1
 			record.set(0, value & 0xff)
 			record.set(1, (value >> 8) & 0xff)
 			lasttag = f.tag
-			
+		continue	
 	
 	header.set(0, index & 0xff)
 	header.set(1, (index >> 8) & 0xff)
@@ -730,7 +745,7 @@ func _encode(args):
 	var sel = args.ud
 	if sel.deep >= ENCODE_DEEPLEVEL:
 		return -1
-	if sel.indata[args.tagname] == null:
+	if not sel.indata.has(args.tagname):
 		return SPROTO_CB_NIL
 	var target = null
 	if args.index > 0:
@@ -738,7 +753,7 @@ func _encode(args):
 			if typeof(sel.indata[args.tagname]) != TYPE_DICTIONARY:
 				sel.array_index = 0
 				return SPROTO_CB_NIL
-			if sel.indata[args.tagname] == null || sel.indata[args.tagname].size() == 0:
+			if not sel.indata.has(args.tagname) || sel.indata[args.tagname].size() == 0:
 				sel.array_index = 0
 				return SPROTO_CB_NOARRAY
 		target = sel.indata[args.tagname][args.index-1]
@@ -770,10 +785,9 @@ func _encode(args):
 		return 4
 	elif args.type == SPROTO_TSTRING:
 		var arr = target.to_utf8()
-		if arr.size() > args.length:
-			args.length = arr.size()
-		args.buffer = Buffer.new()
-		args.buffer.init(arr)
+		args.length = arr.size()
+		for i in range(arr.size()):
+			args.buffer.set(i, arr[i])
 		return args.length
 	elif args.type == SPROTO_TSTRUCT:
 		var sub = {}
@@ -1020,8 +1034,8 @@ func _decode(args):
 	return 0
 			
 func querytype(typename):
-	var v = sp.tcache[typename]
-	if v == null:
+	var v = null
+	if sp.tcache.has(typename) == false:
 		v = sproto_type(typename)
 		sp.tcache[typename] = v
 	return v
@@ -1041,7 +1055,9 @@ func encode(type, data):
 		st = type
 	var tbl_index = 2
 	var buffer = Buffer.new()
-	buffer.init(Array().resize(128))
+	var tmp = Array()
+	tmp.resize(128)
+	buffer.init(tmp)
 	var sz = buffer.size()
 	sel.st = st
 	sel.tbl_index = tbl_index
