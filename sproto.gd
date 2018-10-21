@@ -75,9 +75,7 @@ func expand_buffer(buffer, osz, nsz):
 		osz *= 2
 	if osz > ENCODE_MAXSIZE:
 		return null
-	var tmp = Array()
-	tmp.resize(osz)
-	buffer.init(tmp)
+	buffer.buffer.resize(osz)
 	return buffer
 
 func expand64(v):
@@ -458,8 +456,8 @@ func fill_size(buffer, sz):
 	buffer.set(3, (sz >> 24) & 0xff)
 	return sz + SIZEOF_LENGTH
 	
-func encode_integer(v, buffer, size):
-	if size < SIZEOF_LENGTH + 4:
+func encode_integer(v, buffer):
+	if buffer.size() - buffer.index < SIZEOF_LENGTH + SIZEOF_INT32:
 		return -1
 	buffer.set(4, v & 0xff)
 	buffer.set(5, (v >> 8) & 0xff)
@@ -467,8 +465,8 @@ func encode_integer(v, buffer, size):
 	buffer.set(7, (v >> 24) & 0xff)
 	return fill_size(buffer, 4)
 	
-func encode_uint64(v, buffer, size):
-	if size < SIZEOF_LENGTH + 8:
+func encode_uint64(v, buffer):
+	if buffer.size() - buffer.index < SIZEOF_LENGTH + SIZEOF_INT64:
 		return -1
 	buffer.set(4, v & 0xff)
 	buffer.set(5, (v >> 8) & 0xff)
@@ -578,9 +576,10 @@ func encode_integer_array(cb, args, buffer, size, noarray):
 	header.set(0, intlen)
 	return stream
 	
-func encode_array(cb, args, buffer, size):
+func encode_array(cb, args, buffer):
 	var stream = Buffer.new()
 	stream.pointer(buffer)
+	var size = buffer.size() - buffer.index
 	
 	var data = Buffer.new()
 	data.pointer(stream)
@@ -678,7 +677,7 @@ func sproto_encode(st, buffer, size, cb, ud):
 		args.extra = f.extra
 		if (type & SPROTO_TARRAY) != 0:
 			args.type = type & ~SPROTO_TARRAY
-			sz = encode_array(cb, args, data, size)
+			sz = encode_array(cb, args, data)
 		else:
 			args.type = type
 			args.index = 0
@@ -699,9 +698,9 @@ func sproto_encode(st, buffer, size, cb, ud):
 						value = (args.value + 1) * 2
 						sz = 2
 					else:
-						sz = encode_integer(args.value, data, sz)
+						sz = encode_integer(args.value, data)
 				elif sz == SIZEOF_INT64:
-					sz = encode_uint64(args.value, data, sz)
+					sz = encode_uint64(args.value, data)
 				else:
 					return -1
 			elif type == SPROTO_TSTRUCT || type == SPROTO_TSTRING:
@@ -786,6 +785,8 @@ func _encode(args):
 	elif args.type == SPROTO_TSTRING:
 		var arr = target.to_utf8()
 		args.length = arr.size()
+		if args.buffer.size() - args.buffer.index < arr.size():
+			return SPROTO_CB_ERROR
 		for i in range(arr.size()):
 			args.buffer.set(i, arr[i])
 		return args.length
@@ -1056,12 +1057,13 @@ func encode(type, data):
 	var tbl_index = 2
 	var buffer = Buffer.new()
 	var tmp = Array()
-	tmp.resize(128)
+	tmp.resize(32)
 	buffer.init(tmp)
 	var sz = buffer.size()
 	sel.st = st
 	sel.tbl_index = tbl_index
 	sel.indata = data
+	
 	while true:
 		sel.array_tag = null
 		sel.array_index = 0

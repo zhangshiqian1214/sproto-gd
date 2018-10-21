@@ -116,21 +116,28 @@ func _on_Button_pressed():
 	.Player {
 		playerid   0 : integer            #玩家id               ok
 		nickname   1 : string             #昵称                 ok (size > 128重新分配空间)
-		headid     2 : integer            #默认头像id            
-		headurl    3 : string             #头像地址              
-		sex        4 : integer            #0-未知 1-男 2-女      
-		isvip      5 : boolean            #是否是vip
-		gold       6 : integer            #金币
+		headid     2 : integer            #默认头像id            ok
+		headurl    3 : string             #头像地址              ok
+		sex        4 : integer            #0-未知 1-男 2-女      ok
+		isvip      5 : boolean            #是否是vip            ok
+		gold       6 : integer            #金币                 ok
 		signs      7 : *boolean           #签到列表
 		pets       8 : *integer           #宠物id
 		mails      9 : *string            #邮件列表
 		friends   10 : *Friend(playerid)  #带playerid键值
 		money     11 : integer(2)         #带2位小数的货币
 	}
+	integer <= 2147483647
+	
 	"""
 	sproto.encode("auth.Player", {
-		"playerid" :  1234,
-		"nickname" : "hello world"
+		#"playerid" :  0xFFFFFFFF,
+		#"nickname" : "helloworld0123456789abcdefg",
+		#"headid"   : 1001,
+		#"headurl"  : "http://img5.duitang.com/uploads/item/201410/17/20141017235209_MEsRe.thumb.700_0.jpeg",
+		#"sex"      : 0,
+		"isvip"    : true,
+		#"gold"     : 2147483647,
 	})
 	
 	pass # replace with function body
