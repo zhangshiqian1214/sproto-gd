@@ -50,8 +50,8 @@ class Buffer:
 		var result = []
 		if index + idx > buffer.size() - 1:
 			return result
-		if index + idx + sz > buffer.size() - 1:
-			sz = buffer.size() - 1 - index - idx
+		if index + idx + sz > buffer.size():
+			sz = buffer.size() - index - idx
 		result.resize(sz+1)
 		for i in range(sz):
 			result[i] = buffer[index+idx+i]
@@ -813,7 +813,7 @@ func decode_array_object(cb, args, buffer, sz):
 	var stream = Buffer.new()
 	stream.pointer(buffer)
 	while sz > 0:
-		if sz > SIZEOF_LENGTH:
+		if sz < SIZEOF_LENGTH:
 			return -1
 		hsz = todword(stream)
 		stream.move(SIZEOF_LENGTH)
@@ -888,7 +888,8 @@ func decode_array(cb, args, buffer):
 		return -1
 	return 0
 
-func sproto_decode(st, buffer, size, cb, ud):
+func sproto_decode(st, buffer, cb, ud):
+	var size = buffer.size() - buffer.index
 	if size < SIZEOF_HEADER:
 		return -1
 	var args = {}
@@ -898,7 +899,7 @@ func sproto_decode(st, buffer, size, cb, ud):
 	var stream = Buffer.new()
 	stream.pointer(data)
 	var datastream = Buffer.new()
-	var fn = todword(stream)
+	var fn = toword(stream)
 	stream.move(SIZEOF_HEADER)
 	size -= SIZEOF_HEADER
 	if size < fn * SIZEOF_FIELD:
@@ -908,7 +909,6 @@ func sproto_decode(st, buffer, size, cb, ud):
 	args.ud = ud
 	var tag = -1
 	for i in range(fn):
-		
 		var f = null
 		var pTmp = Buffer.new()
 		pTmp.pointer(stream, i * SIZEOF_FIELD)
@@ -991,9 +991,13 @@ func _decode(args):
 	if args.index != 0:
 		if args.tagname != sel.array_tag:
 			sel.array_tag = args.tagname
-			sel.result[args.tagname] = Array()
+			if args.mainindex >= 0:
+				sel.result[args.tagname] = {}
+			else:
+				sel.result[args.tagname] = Array()
 			if args.index < 0:
 				return 0
+					
 	if args.type == SPROTO_TINTEGER:
 		if args.extra != 0:
 			value = args.value / args.extra
@@ -1014,16 +1018,16 @@ func _decode(args):
 		sub.array_index = 0
 		sub.array_tag = null
 		sub.result = {}
-		if args.mainindex > 0:
+		if args.mainindex >= 0:
 			sub.mainindex_tag = args.mainindex
-			var r = sproto_decode(args.subtype, args.value, args.length, funcref(self, "_decode"), sub)
+			var r = sproto_decode(args.subtype, args.value, funcref(self, "_decode"), sub)
 			if r < 0 || r != args.length:
 				return r
 			value = sub.result
 		else:
 			sub.mainindex_tag = -1
 			sub.key_index = 0
-			var r = sproto_decode(args.subtype, args.value, args.length, funcref(self, "_decode"), sub)
+			var r = sproto_decode(args.subtype, args.value, funcref(self, "_decode"), sub)
 			if r < 0:
 				return SPROTO_CB_ERROR
 			if r != args.length:
@@ -1033,17 +1037,26 @@ func _decode(args):
 		print("Invalid Type")
 		
 	if args.index > 0:
-		sel.result[args.tagname][args.index -1] = value
+		if args.mainindex >= 0:
+			var _mainindex = value["_mainindex"]
+			value.erase("_mainindex")
+			sel.result[args.tagname][_mainindex] = value
+		else:
+			sel.result[args.tagname].push_back(value)
 	else:
+		if sel.mainindex_tag == args.tagid:
+			sel.result["_mainindex"] = value
 		sel.result[args.tagname] = value
+		
 	return 0
 			
 func querytype(typename):
-	var v = null
 	if sp.tcache.has(typename) == false:
-		v = sproto_type(typename)
+		var v = sproto_type(typename)
 		sp.tcache[typename] = v
-	return v
+		return v
+	else:
+		return sp.tcache[typename]
 
 func pack(buffer):
 	pass
@@ -1095,7 +1108,7 @@ func decode(type, buffer):
 	ud.array_tag = null
 	ud.deep = 0
 	ud.result = {}
-	var r = sproto_decode(st, stream, sz, funcref(self, "_decode"), ud)
+	var r = sproto_decode(st, stream, funcref(self, "_decode"), ud)
 	if r < 0:
 		return null
 	return ud.result
