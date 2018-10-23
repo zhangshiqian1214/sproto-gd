@@ -3,7 +3,7 @@ Gdscript版本的sproto库
 
 
 # 性能测试
-
+```gdscript
 var player = {
 		"playerid" :  0xFFFFFFFF,
 		"nickname" : "helloworld0123456789abcdefg",
@@ -27,7 +27,7 @@ var player = {
 	for i in range(1000000):
 		var buffer = sproto.encode("auth.Player", player)
 		var result = sproto.decode("auth.Player", buffer)
-		
+```		
 	
 	同时运行1M次做比较
 	lua   17秒
