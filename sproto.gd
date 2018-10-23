@@ -1044,7 +1044,7 @@ func _decode(args):
 		else:
 			sel.result[args.tagname].push_back(value)
 	else:
-		if sel.mainindex_tag == args.tagid:
+		if sel.has("mainindex_tag") && sel.mainindex_tag == args.tagid:
 			sel.result["_mainindex"] = value
 		sel.result[args.tagname] = value
 		
@@ -1074,7 +1074,7 @@ func encode(type, data):
 	var tbl_index = 2
 	var buffer = Buffer.new()
 	var tmp = Array()
-	tmp.resize(128)
+	tmp.resize(512)
 	buffer.init(tmp)
 	var sz = buffer.size()
 	sel.st = st

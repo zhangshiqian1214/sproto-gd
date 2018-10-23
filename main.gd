@@ -131,26 +131,39 @@ func _on_Button_pressed():
 	
 	"""
 	
-	var buffer = sproto.encode("auth.Player", {
-		#"playerid" :  0xFFFFFFFF,
-		#"nickname" : "helloworld0123456789abcdefg",
-		#"headid"   : 1001,
-		#"headurl"  : "http://img5.duitang.com/uploads/item/201410/17/20141017235209_MEsRe.thumb.700_0.jpeg",
-		#"sex"      : 0,
-		#"isvip"    : true,
-		#"gold"     : 2147483647,
-		#"signs"     : [false, false, true, false, true],
-		#"pets"      : [10038, 10039, 10040, 10041, 10042],
-		#"mails"     : ["hello", "world", "how", "are", "you"],
-		#"master"      : { "playerid" : 12345, "nickname" : "李飞haha"},
-		"friends"    : [
+	var player = {
+		"playerid" :  0xFFFFFFFF,
+		"nickname" : "helloworld0123456789abcdefg",
+		"headid"   : 1001,
+		"headurl"  : "http://img5.duitang.com/uploads/item/201410/17/20141017235209_MEsRe.thumb.700_0.jpeg",
+		"sex"      : 0,
+		"isvip"    : true,
+		"gold"     : 4147483647,
+		"signs"    : [false, false, true, false, true],
+		"pets"     : [10038, 10039, 10040, 10041, 10042],
+		"mails"    : ["hello", "world", "how", "are", "you"],
+		"master"   : { "playerid" : 12345, "nickname" : "李飞haha"},
+		"friends"  : [
         	{ "playerid" : 1001, "nickname" : "小张"}, 
         	{ "playerid" : 1002, "nickname" : "小王"},
         	{ "playerid" : 1003, "nickname" : "小飞"},
         	{ "playerid" : 1004, "nickname" : "小龙"}
     	]
-	})
+	}
+	var date = OS.get_date()
+	var time = OS.get_time()
+	var timeZone = OS.get_time_zone_info()
+	var dtime = OS.get_datetime()
+	var unixdt = OS.get_unix_time()
+	var syssec = OS.get_system_time_secs()
+	#var udt = OS.get_datetime_from_unix_time()
 	
-	var player = sproto.decode("auth.Player", buffer)
-	print(player)
+	for i in range(1000000):
+		var buffer = sproto.encode("auth.Player", player)
+		var result = sproto.decode("auth.Player", buffer)
+		#print(result)
+	
+	var enddt = OS.get_unix_time()
+	var interval = enddt - unixdt
+	print(interval)
 	pass # replace with function body
