@@ -121,23 +121,34 @@ func _on_Button_pressed():
 		sex        4 : integer            #0-未知 1-男 2-女      ok
 		isvip      5 : boolean            #是否是vip            ok
 		gold       6 : integer            #金币                 ok
-		signs      7 : *boolean           #签到列表
-		pets       8 : *integer           #宠物id
-		mails      9 : *string            #邮件列表
-		friends   10 : *Friend(playerid)  #带playerid键值
-		money     11 : integer(2)         #带2位小数的货币
+		signs      7 : *boolean           #签到列表              ok
+		pets       8 : *integer           #宠物id               ok
+		mails      9 : *string            #邮件列表              ok
+		friends   10 : *Friend(playerid)  #带playerid键值        ok
+		money     11 : integer(2)         #带2位小数的货币        ok
 	}
 	integer <= 2147483647
 	
 	"""
+	
 	sproto.encode("auth.Player", {
-		#"playerid" :  0xFFFFFFFF,
-		#"nickname" : "helloworld0123456789abcdefg",
-		#"headid"   : 1001,
-		#"headurl"  : "http://img5.duitang.com/uploads/item/201410/17/20141017235209_MEsRe.thumb.700_0.jpeg",
-		#"sex"      : 0,
+		"playerid" :  0xFFFFFFFF,
+		"nickname" : "helloworld0123456789abcdefg",
+		"headid"   : 1001,
+		"headurl"  : "http://img5.duitang.com/uploads/item/201410/17/20141017235209_MEsRe.thumb.700_0.jpeg",
+		"sex"      : 0,
 		"isvip"    : true,
-		#"gold"     : 2147483647,
+		"gold"     : 2147483647,
+		"signs"     : [false, false, true, false, true],
+		"pets"      : [10038, 10039, 10040, 10041, 10042],
+		"mails"     : ["hello", "world", "how", "are", "you"],
+		"master"      : { "playerid" : 12345, "nickname" : "李飞haha"},
+		"friends"    : [
+        	{ "playerid" : 1001, "nickname" : "小张"}, 
+        	{ "playerid" : 1002, "nickname" : "小王"},
+        	{ "playerid" : 1003, "nickname" : "小飞"},
+        	{ "playerid" : 1004, "nickname" : "小龙"}
+    	]
 	})
 	
 	pass # replace with function body

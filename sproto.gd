@@ -478,7 +478,8 @@ func encode_uint64(v, buffer):
 	buffer.set(11, (v >> 56) & 0xff)
 	return fill_size(buffer, 8)
 	
-func encode_object(cb, args, buffer, size):
+func encode_object(cb, args, buffer):
+	var size = buffer.size() - buffer.index
 	if size < SIZEOF_LENGTH:
 		return -1
 	args.buffer = Buffer.new()
@@ -704,7 +705,7 @@ func sproto_encode(st, buffer, size, cb, ud):
 				else:
 					return -1
 			elif type == SPROTO_TSTRUCT || type == SPROTO_TSTRING:
-				sz = encode_object(cb, args, data, size)
+				sz = encode_object(cb, args, data)
 		if sz < 0:
 			return -1
 		if sz > 0:
@@ -749,12 +750,15 @@ func _encode(args):
 	var target = null
 	if args.index > 0:
 		if args.tagname != sel.array_tag:
-			if typeof(sel.indata[args.tagname]) != TYPE_DICTIONARY:
+			sel.array_tag = args.tagname
+			if typeof(sel.indata[args.tagname]) != TYPE_DICTIONARY && typeof(sel.indata[args.tagname]) != TYPE_ARRAY:
 				sel.array_index = 0
 				return SPROTO_CB_NIL
-			if not sel.indata.has(args.tagname) || sel.indata[args.tagname].size() == 0:
+			if not sel.indata.has(args.tagname):
 				sel.array_index = 0
 				return SPROTO_CB_NOARRAY
+		if sel.indata[args.tagname].size() < args.index:
+			return SPROTO_CB_NIL
 		target = sel.indata[args.tagname][args.index-1]
 		if target == null:
 			return SPROTO_CB_NIL
@@ -770,7 +774,7 @@ func _encode(args):
 		else:
 			v = target
 		vh = v >> 31
-		if vh == 0 || vh == -1:
+		if vh == 0 || vh == -1: 
 			args.value = v
 			return 4
 		else:
@@ -1057,7 +1061,7 @@ func encode(type, data):
 	var tbl_index = 2
 	var buffer = Buffer.new()
 	var tmp = Array()
-	tmp.resize(32)
+	tmp.resize(128)
 	buffer.init(tmp)
 	var sz = buffer.size()
 	sel.st = st
@@ -1074,6 +1078,8 @@ func encode(type, data):
 			buffer = expand_buffer(buffer, sz, sz * 2)
 			sz *= 2
 		else:
+			if buffer.size() > r:
+				buffer.splice(r, buffer.size()-r)
 			return buffer
 	
 func decode(type, buffer):
