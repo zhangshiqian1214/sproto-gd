@@ -1,10 +1,30 @@
 ﻿# sproto-gd
-Gdscript版本的sproto库
+ 这是一个专为godot引擎开发的sproto版本   
+[云风的 c语言版 sproto](https://github.com/cloudwu/sproto)    
+[js版sproto](https://https://github.com/zhangshiqian1214/sproto-js.git)   
+
+#### 功能
+---
+- [x] 普通字符串 string
+- [x] 二进制字符串binary
+- [x] 最大32位整数integer
+- [x] 符点数integer(n)
+- [x] 布尔类型 boolean
+- [x] 数组类型 *integer, *boolean, *string, *struct
+- [x] 带索引的数组类型 *struct(key)
+- [x] host 函数 
+- [x] attach 函数
+- [x] dispatch 函数 
+
+#### spb 文件生成工具
+[sprototool](https://github.com/zhangshiqian1214/sprototool.git) 
+
+[spbtool](https://github.com/zhangshiqian1214/spbtool.git)
 
 
 # 性能测试
 ```gdscript
-var player = {
+	var player = {	
 		"playerid" :  0xFFFFFFFF,
 		"nickname" : "helloworld0123456789abcdefg",
 		"headid"   : 1001,
@@ -21,15 +41,15 @@ var player = {
         	{ "playerid" : 1002, "nickname" : "小王"},
         	{ "playerid" : 1003, "nickname" : "小飞"},
         	{ "playerid" : 1004, "nickname" : "小龙"}
-    	]
+    		]
 	}
 	
 	for i in range(1000000):
-		var buffer = sproto.encode("auth.Player", player)
-		var result = sproto.decode("auth.Player", buffer)
+	    var buffer = sproto.encode("auth.Player", player)
+	    var result = sproto.decode("auth.Player", buffer)
 ```		
 	
-	同时运行1M次做比较
-	lua   17秒
-	js    133秒
-	gd    1780秒
+同时运行1M次做比较
+lua   17秒
+js    133秒
+gd    1780秒
