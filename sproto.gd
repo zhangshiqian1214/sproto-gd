@@ -30,10 +30,11 @@ const SIZEOF_INT32 = 4
 var sp = null
 
 class Buffer:
-	var buffer = []
+	var buffer = null
 	var index = 0
 	func init(arr):
 		buffer = Array(arr)
+		index = 0
 	func move(size):
 		index = index + size
 		return self
@@ -44,6 +45,9 @@ class Buffer:
 	func set(idx, value):
 		buffer[index+idx] = value
 	func pointer(other, idx=0):
+		if other == null:
+			buffer = null
+			index = 0
 		buffer = other.buffer
 		index = other.index + idx
 	func slice(idx, sz):
@@ -1058,12 +1062,6 @@ func querytype(typename):
 	else:
 		return sp.tcache[typename]
 
-func pack(buffer):
-	pass
-	
-func unpack(buffer):
-	pass
-	
 func encode(type, data):
 	var sel = {}
 	var st = null
@@ -1113,6 +1111,170 @@ func decode(type, buffer):
 		return null
 	return ud.result
 	
+func pack_seg(src, output, sz, n):
+	var buffer = Buffer.new()
+	buffer.pointer(output)
+	var header = 0
+	var notzero = 0
+	var obuffer = Buffer.new()
+	obuffer.pointer(buffer)
+	buffer.move(1)
+	sz -= 1
+	if sz < 0:
+		obuffer.pointer(null)
+	for i in range(8):
+		if src.get(i) != 0:
+			notzero += 1
+			header = header | (1<<i)
+			if sz >0:
+				buffer.set(0, src.get(i))
+				buffer.move(1)
+				sz -= 1
+	if (notzero == 7 || notzero == 6) && n > 0:
+		notzero = 8
+	if notzero == 8:
+		if n > 0:
+			return 8
+		else:
+			return 10
+	if obuffer.buffer != null:
+		obuffer.set(0, header)
+	return notzero + 1
+	
+func write_ff(src, des, n):
+	var align8_n = (n+7) & (~7)
+	des.set(0, 0xff)
+	des.set(1, int(align8_n / 8) -1)
+	for i in range(n):
+		des.set(i+2, src.get(i))
+	for i in range(align8_n-n):
+		des.set(n+2+i, 0)
+	
+func sproto_pack(srcv, srcsz, bufferv):
+	var tmp = Array()
+	tmp.resize(8)
+	var bufsz = bufferv.size()
+	var ff_srcstart = Buffer.new()
+	var ff_desstart = Buffer.new()
+	var ff_n = 0
+	var size = 0
+	var src = Buffer.new()
+	src.pointer(srcv)
+	var buffer = Buffer.new()
+	buffer.pointer(bufferv)
+	for i in range(0,srcsz,8):
+		var padding = i+8-srcsz;
+		if padding > 0:
+			for k in range(8-padding):
+				tmp[k] = src.get(k)
+			for j in range(padding):
+				tmp[7-j] = 0
+			src.init(tmp)
+		var n = pack_seg(src, buffer, bufsz, ff_n)
+		bufsz -= n
+		if n == 10:
+			ff_srcstart.pointer(src)
+			ff_desstart.pointer(buffer)
+			ff_n = 1
+		elif n == 8 && ff_n > 0:
+			ff_n += 1
+			if ff_n == 256:
+				if bufsz >= 0:
+					write_ff(ff_srcstart, ff_desstart, 256 * 8)
+				ff_n = 0
+		else:
+			if ff_n > 0:
+				if bufsz >= 0:
+					write_ff(ff_srcstart, ff_desstart, ff_n * 8)
+				ff_n = 0
+		src.move(8)
+		buffer.move(n)
+		size += n
+		continue
+	if bufsz >= 0:
+		if ff_n == 1:
+			write_ff(ff_srcstart, ff_desstart, 8)
+		elif ff_n > 1:
+			write_ff(ff_srcstart, ff_desstart, srcsz - (ff_srcstart.index - srcv.index))
+			
+	return size
+	
+
+func pack(buffer):
+	var sz = buffer.size()
+	var maxsz = floor((sz + 2047) / 2048 * 2)  + sz + 2
+	var output = Buffer.new()
+	var tmp = Array()
+	tmp.resize(maxsz)
+	output.init(tmp)
+	var bytes = sproto_pack(buffer, sz, output)
+	output.splice(bytes, maxsz-bytes) #remove 
+	return output
+	
+func sproto_unpack(srcv, srcsz, bufferv, bufsz):
+	var src = Buffer.new()
+	src.pointer(srcv)
+	var buffer = Buffer.new()
+	buffer.pointer(bufferv)
+	var size = 0
+	while srcsz > 0:
+		var header = src.get(0)
+		srcsz -= 1
+		src.move(1)
+		if header == 0xff:
+			if srcsz < 0:
+				return -1
+			var n = (src.get(0)+ 1) * 8
+			if srcsz < n + 1:
+				return -1
+			srcsz -= n + 1
+			src.move(1)
+			if bufsz >= n:
+				for i in range(n):
+					buffer.set(i, src.get(i))
+			bufsz -= n
+			buffer.move(n)
+			src.move(n)
+			size += n
+		else:
+			for i in range(8):
+				var nz = (header >> i) & 1
+				if nz != 0:
+					if srcsz < 0:
+						return -1
+					if bufsz > 0:
+						buffer.set(0, src.get(0))
+						bufsz -= 1
+						buffer.move(1)
+					src.move(1)
+					srcsz -= 1
+				else:
+					if bufsz > 0:
+						buffer.set(0, 0)
+						bufsz -= 1
+						buffer.move(1)
+				size += 1
+		continue
+		
+	return size	
+	
+func unpack(buffer):
+	var sz = buffer.size()
+	var output = Buffer.new()
+	var tmp = Array()
+	tmp.resize(sz * 2)
+	output.init(tmp)
+	var osz = sz * 2
+	var r = sproto_unpack(buffer, sz, output, osz)
+	if r < 0:
+		return "Error"
+	if r > osz:
+		output = expand_buffer(output, osz, r)
+		r = sproto_unpack(buffer, sz, output, r)
+		if r < 0:
+			return "Error"
+	output.splice(r, output.size()-r)
+	return output
 	
 func pencode(type, buffer):
 	pass

@@ -138,7 +138,7 @@ func _on_Button_pressed():
 		"headurl"  : "http://img5.duitang.com/uploads/item/201410/17/20141017235209_MEsRe.thumb.700_0.jpeg",
 		"sex"      : 0,
 		"isvip"    : true,
-		"gold"     : 4147483647,
+		"gold"     : 2147483647,
 		"signs"    : [false, false, true, false, true],
 		"pets"     : [10038, 10039, 10040, 10041, 10042],
 		"mails"    : ["hello", "world", "how", "are", "you"],
@@ -158,9 +158,19 @@ func _on_Button_pressed():
 	var syssec = OS.get_system_time_secs()
 	#var udt = OS.get_datetime_from_unix_time()
 	
-	for i in range(1000000):
-		var buffer = sproto.encode("auth.Player", player)
-		var result = sproto.decode("auth.Player", buffer)
+	var buffer = sproto.encode("auth.Player", player)
+	var pbuffer = sproto.pack(buffer)
+	var ubuffer = sproto.unpack(pbuffer)
+	
+	var result = sproto.decode("auth.Player", ubuffer)
+	
+	#for i in range(100000):
+	#	var outstr = JSON.print(player)
+	#	var result = JSON.parse(outstr)
+	
+	#for i in range(1000000):
+	#	var buffer = sproto.encode("auth.Player", player)
+	#	var result = sproto.decode("auth.Player", buffer)
 		#print(result)
 	
 	var enddt = OS.get_unix_time()
