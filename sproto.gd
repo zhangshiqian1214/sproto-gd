@@ -28,6 +28,8 @@ const SIZEOF_INT64 = 8
 const SIZEOF_INT32 = 4
 
 var sp = null
+var packagename = "package"
+var session_requests = {}
 
 class Buffer:
 	var buffer = null
@@ -73,6 +75,10 @@ class Buffer:
 		for i in range(sz):
 			buffer.remove(index+idx)
 		return sz
+	func concat(other):
+		for i in range(other.size()):
+			buffer.push_back(other.get(i))
+		return self
 	
 func expand_buffer(buffer, osz, nsz):
 	while osz < nsz:
@@ -749,7 +755,7 @@ func _encode(args):
 	var sel = args.ud
 	if sel.deep >= ENCODE_DEEPLEVEL:
 		return -1
-	if not sel.indata.has(args.tagname):
+	if not sel.indata.has(args.tagname) || sel.indata[args.tagname] == null:
 		return SPROTO_CB_NIL
 	var target = null
 	if args.index > 0:
@@ -776,8 +782,8 @@ func _encode(args):
 			var vn = target
 			v = floor(vn * args.extra + 0.5)
 		else:
-			v = target
-		vh = v >> 31
+			v = int(target)
+		vh = int(v) >> 31
 		if vh == 0 || vh == -1: 
 			args.value = v
 			return 4
@@ -1276,11 +1282,143 @@ func unpack(buffer):
 	output.splice(r, output.size()-r)
 	return output
 	
-func pencode(type, buffer):
-	pass
+func pencode(type, data):
+	var pbuffer = encode(type, data)
+	if pbuffer == null:
+		return null
+	return pack(pbuffer)
 	
 func pdecode(type, buffer):
-	pass
+	var dbuffer = unpack(buffer)
+	if dbuffer == null:
+		return null
+	return decode(type, dbuffer)
+	
+func objlen(type, buffer):
+	var st = null
+	if typeof(type) == TYPE_STRING || typeof(type) == TYPE_INT:
+		st = querytype(type)
+	else:
+		st = type
+	var ud = {}
+	ud.array_tag = null
+	ud.deep = 0
+	ud.result = {}
+	return sproto_decode(st, buffer, funcref(self, "_decode"), ud)
+	
+func protocol(pname):
+	var name = null
+	var tag = null
+	if typeof(pname) == TYPE_STRING:
+		name = pname
+		tag = sproto_prototag(pname)
+	elif typeof(pname) == TYPE_INT:
+		name = sproto_protoname(pname)
+		tag = pname
+	var request = sproto_protoquery(name, SPROTO_REQUEST)
+	var response = sproto_protoquery(name, SPROTO_RESPONSE)
+	var result = {
+		"tag" : tag,
+		"name" : name,
+		"request" : request,
+		"response" : response	
+	}
+	return result
+	
+	
+func queryproto(pname):
+	if not sp.pcache.has(pname):
+		var proto = protocol(pname)
+		sp.pcache[proto.name] = proto
+		sp.pcache[proto.tag] = proto
+	return sp.pcache[pname]
+	
+func host(name):
+	packagename = name
+	
+class CbFunc:
+	var response_type = null
+	var session = null
+	var tag = null
+	var sproto = null
+	var packagename = null
+	func init(spr, type, sess, resp, package):
+		sproto = spr
+		tag = type
+		session = sess
+		response_type = resp
+		packagename = package
+	func response(args, ud):
+		var header_tmp = {}
+		header_tmp.type = tag
+		header_tmp.session = session
+		header_tmp.ud = ud
+		var buffer = encode(packagename, header_tmp)
+		if response_type != null:
+			var content = encode(packagename, args)
+			return pack(buffer.concat(content))
+		else:
+			return pack(buffer)
+	
+func gen_response(response, session, type):
+	var cb = CbFunc.new()
+	cb.init(self, type, session, response, packagename)
+	return funcref(cb, "response")
+	
+func dispatch(buffer):
+	var ubuffer = unpack(buffer)
+	var header = decode(packagename, ubuffer)
+	var usedsz = objlen(packagename, ubuffer)
+	var contentarr = ubuffer.slice(usedsz, ubuffer.size() - usedsz)
+	var content = Buffer.new()
+	content.init(contentarr)
+	var ud = null
+	if header.has("ud"):
+		ud = header.ud
+	if header.has("type") and header.has("session"):
+		var proto = queryproto(header.type)
+		var result
+		if proto.has("request"):
+			result = decode(proto.request, content)
+		if header.session > 0:
+			return ["REQUEST", proto.name, result, gen_response(proto.response, header.session, null), ud]
+		else:
+			return ["REQUEST", proto.name, result, null, ud]
+	elif not header.has("type") and header.has("session"):
+		var protoname = session_requests[header.session]
+		var proto = queryproto(protoname)
+		session_requests.earse(header.session)
+		if proto.has("response"):
+			var result = decode(proto.response, content)
+			return ["RESPONSE", protoname, result, header.session, ud]
+		else:
+			return ["RESPONSE", protoname, null, header.session, ud]
+		pass
+	elif header.has("type") and not header.has("session"):
+		var proto = queryproto(header.type)
+		if proto.has("response"):
+			var result = decode(proto.response, content)
+			return ["RESPONSE", proto.name, result, null, ud]
+		else:
+			var result = decode(proto.response, content)
+			return ["RESPONSE", proto.name, null, null, ud] 
+	else:
+		return null
+		
+func request(name, args, session, ud = null):
+	var proto = queryproto(name)
+	var header_tmp = {}
+	header_tmp.type = proto.tag
+	header_tmp.session = session
+	header_tmp.ud = ud
+	var buffer = encode(packagename, header_tmp)
+	if session != null:
+		session_requests[session] = proto.name
+	if proto.has("request"):
+		var content = encode(proto.request, args)
+		return pack(buffer.concat(content))
+	else:
+		return pack(buffer)
 	
 ##使用sproto生成的spb文件初始化
 func create_from_spb(filepath):

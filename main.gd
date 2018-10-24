@@ -111,6 +111,7 @@ func _on_Button_pressed():
 
 	var sproto = Sproto.new()
 	sproto.create_from_spb("res://protocol.spb")
+	sproto.host("Header")
 	
 	"""
 	.Player {
@@ -158,11 +159,10 @@ func _on_Button_pressed():
 	var syssec = OS.get_system_time_secs()
 	#var udt = OS.get_datetime_from_unix_time()
 	
-	var buffer = sproto.encode("auth.Player", player)
-	var pbuffer = sproto.pack(buffer)
-	var ubuffer = sproto.unpack(pbuffer)
-	
-	var result = sproto.decode("auth.Player", ubuffer)
+	#var buffer = sproto.encode("auth.Player", player)
+	#var pbuffer = sproto.pack(buffer)
+	#var ubuffer = sproto.unpack(pbuffer)
+	#var result = sproto.decode("auth.Player", ubuffer)
 	
 	#for i in range(100000):
 	#	var outstr = JSON.print(player)
@@ -172,6 +172,12 @@ func _on_Button_pressed():
 	#	var buffer = sproto.encode("auth.Player", player)
 	#	var result = sproto.decode("auth.Player", buffer)
 		#print(result)
+		
+	var buffer = sproto.request("auth.login", { "account" : "wxHelloWorld", "password" : "123456" }, 1)
+	var result = sproto.dispatch(buffer)
+	
+	var response = result[3]
+	var pbuffer = response.call_func( { "player" : player } )
 	
 	var enddt = OS.get_unix_time()
 	var interval = enddt - unixdt
